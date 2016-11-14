@@ -34,6 +34,7 @@ public class JoinGroup{
 		return hashMap.size();
 	}
 
+	@Override
 	public String toString(){
 		StringBuilder group = new StringBuilder();
 		if(this.isJoinable()){			
@@ -49,11 +50,7 @@ public class JoinGroup{
 	}
 
 	public String getTableList(HashMap<Integer, JoinGroup> tripleToGroup){
-		return this.getTableList("",tripleToGroup);
-	}
-
-	public String getTableList(){
-		return this.getTableList(Constants.DELIMIT);
+		return this.getTableList(Constants.DELIMIT, tripleToGroup);
 	}
 
 	public String getTableList(String delimiter,HashMap<Integer, JoinGroup> tripleToGroup){
@@ -64,10 +61,10 @@ public class JoinGroup{
 			JoinGroup group = null;
 			Integer table = i.next();			
 			group = tripleToGroup.get(table);			
-			if(group!=null && group.isJoined()) tableListString.append(group.getJoinedTableName()).append(Constants.DELIMIT);
-			else tableListString.append("Triple_").append(table.toString()).append(Constants.DELIMIT);
+			if(group!=null && group.isJoined()) tableListString.append(group.getJoinedTableName()).append(delimiter);
+			else tableListString.append("Triple_").append(table.toString()).append(delimiter);
 		}
-		tableListString.delete(tableListString.length()-2,tableListString.length());
+		tableListString.delete(tableListString.length()-delimiter.length(),tableListString.length());
 
 		return tableListString.toString();
 	}
@@ -78,9 +75,9 @@ public class JoinGroup{
 		Iterator<Integer> i = tableList.iterator();
 		while(i.hasNext()){
 			Integer table = i.next();
-			tableListString.append("Triple_").append(table.toString()).append(Constants.DELIMIT);
+			tableListString.append("Triple_").append(table.toString()).append(delimiter);
 		}
-		tableListString.delete(tableListString.length()-2,tableListString.length());
+		tableListString.delete(tableListString.length()-delimiter.length(),tableListString.length());
 
 		return tableListString.toString();
 	}
@@ -95,17 +92,20 @@ public class JoinGroup{
 
 	public String getJoinedTableName(){
 		if(isJoined){
-			return this.getTableList("");
+			return this.getTableList(Constants.DELIMIT);
 		}
 		return null;
 	}
 
-	public List<Path> getInputPaths(int joinPhaseCount){
+	public List<Path> getInputPaths(int joinPhaseCount, HashMap<Integer, JoinGroup> tripleToGroup){
 		List<Path> inputPaths = new ArrayList<Path>();
 		Iterator<Integer> i = tableList.iterator();
 		while(i.hasNext()){
 			Integer number = i.next();
-			Path path = new Path(Constants.OUTPUT_DIR+joinPhaseCount+"/"+"Triple_"+number);
+			String paths = "";
+			if (tripleToGroup.containsKey(number)) paths = Constants.OUTPUT_DIR+joinPhaseCount+"/"+tripleToGroup.get(number).getTableList("");
+			else paths = Constants.OUTPUT_DIR+1+"/"+"Triple_"+number;
+			Path path = new Path(paths);
 			inputPaths.add(path);
 		}
 		return inputPaths;		

@@ -7,17 +7,8 @@ import java.io.InputStreamReader;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.hadoop.mapred.MultiFileSplit;
 import org.apache.hadoop.mapred.RecordReader;
-
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.sparql.util.graph.GraphFactory;
-
-import utils.Constants;
-import utils.IStream;
 
 abstract public class LogicalTableBaseRecordReader<K, V> implements RecordReader<K, V> {
 

@@ -1,32 +1,18 @@
 package format;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Hashtable;
-import java.util.StringTokenizer;
-
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.MultiFileSplit;
 
 
 import utils.Constants;
 
-import com.hp.hpl.jena.graph.Node;
-//import model.Triple;
-
-import com.hp.hpl.jena.rdf.model.Literal;
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.RDFErrorHandler;
-import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.impl.RDFDefaultErrorHandler;
-import com.hp.hpl.jena.shared.SyntaxError;
-import com.hp.hpl.jena.sparql.util.graph.GraphFactory;
 
 public class LogicalTableTripleReader extends LogicalTableBaseRecordReader<Text,HashMap<String, String>>{
 	

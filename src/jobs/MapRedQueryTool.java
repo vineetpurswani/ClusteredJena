@@ -2,10 +2,8 @@ package jobs;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -119,7 +117,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 				String tableList = group.getTableList(joinedGroup);
 				//System.out.println("TableList:"+tableList);
 
-				List<Path> inputPaths = group.getInputPaths(joinPhaseCount);
+				List<Path> inputPaths = group.getInputPaths(joinPhaseCount, joinedGroup);
 
 
 				joinPhase(joinPhaseCount, joinValue, noOfTables, tableList,inputPaths);
@@ -152,8 +150,6 @@ public class MapRedQueryTool extends Configured implements Tool {
 
 		conf.set(Constants.JOIN_VALUE, joinValue);
 		conf.set(Constants.NO_OF_TABLES, noOfTables+"");
-		//conf.set(Constants.idmap, pair_str);
-
 		conf.set(Constants.LIST_OF_TABLES, tableNames);
 
 		Iterator<Path> i = inputPaths.iterator();
@@ -201,13 +197,6 @@ public class MapRedQueryTool extends Configured implements Tool {
 		conf.set(Constants.IDMAP, StringSerialization.toString(idmap));
 		conf.setJobName("Map Reduce SPARQL Query");
 
-//		System.out.println("Adding config values");
-//		ObjectOutputStream objout = new ObjectOutputStream(new FileOutputStream("/home/hduser/query.hash"));
-//		objout.writeObject(idmap);
-//		objout.close();
-
-		//List<String> listOfkeys = getListOfWords(pattern);
-
 		ArrayList<String>  inputPaths = fetchBitMatPathList(conf);
 
 		Iterator<String> i = inputPaths.iterator();
@@ -226,8 +215,8 @@ public class MapRedQueryTool extends Configured implements Tool {
 		conf.setMapperClass(SelectionMapper.class);
 		conf.setReducerClass(SelectionReducer.class);
 
-		conf.setInputFormat((Class<? extends InputFormat>) WholeFileInputFormat.class);
-		conf.setOutputFormat((Class<? extends OutputFormat>)TriplesOutputFormat.class);		
+		conf.setInputFormat(WholeFileInputFormat.class);
+		conf.setOutputFormat(TriplesOutputFormat.class);		
 
 
 		FileSystem fs = FileSystem.newInstance(getConf());
@@ -310,7 +299,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 
 	public static HashMap<Node, JoinGroup> extractJoinTriples(BasicPattern pattern, HashMap<Integer, JoinGroup> tripleToGroup, List<Node> variableOrder){
 
-		HashMap<Node,JoinGroup> varList = new HashMap();		
+		HashMap<Node,JoinGroup> varList = new HashMap<Node, JoinGroup>();		
 
 		Iterator<Triple> i = pattern.iterator();
 		int counter = 1;
