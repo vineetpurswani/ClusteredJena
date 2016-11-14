@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import mappers.SelectionMapper;
+import mapper.SelectionMapper;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
@@ -15,15 +15,11 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reducer;
 import org.apache.hadoop.mapred.MapReduceBase;
 import org.apache.hadoop.mapred.Reporter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import utils.Constants;
 
 public class LogicalTableJoinReducer extends MapReduceBase implements
 		Reducer<Text, Text, Text, Text> {
-
-	private static Logger log = LoggerFactory.getLogger(LogicalTableJoinReducer.class);
 	
 	String[] tables = null;
 	int noOfTables = 0;
@@ -36,8 +32,8 @@ public class LogicalTableJoinReducer extends MapReduceBase implements
 			tables = listOfTables.split(Constants.REGEX);			
 		}
 		
-		log.info("Incoming tables1:"+tables[0]);
-		log.info("Incoming tables2:"+tables[1]);
+		//log.info("Incoming tables1:"+tables[0]);
+		//log.info("Incoming tables2:"+tables[1]);
 	}
 	
 	@Override

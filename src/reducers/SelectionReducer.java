@@ -1,11 +1,9 @@
 package reducers;
 
-
-
 import java.io.IOException;
 import java.util.Iterator;
 
-import mappers.SelectionMapper;
+import mapper.SelectionMapper;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
@@ -13,13 +11,9 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reducer;
 import org.apache.hadoop.mapred.MapReduceBase;
 import org.apache.hadoop.mapred.Reporter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class SelectionReducer extends MapReduceBase implements
 		Reducer<Text, Text, Text, Text> {
-
-	private static Logger log = LoggerFactory.getLogger(SelectionReducer.class);
 	
 	public void configure(JobConf job) {
 	}
