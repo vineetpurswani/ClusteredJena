@@ -2,7 +2,7 @@ package utils;
 
 public class Constants {
 	public static final String MODEL = "model";
-	public static final String key_val = "key_val";
+	public static final String IDMAP = "key_val";
 	public static final String QUERY_STRING = "mapred.sparql.query";
 	public static final String ARGS = "mapred.args";
 	public static final String JOIN_VALUE = "mapred.join.value";
@@ -16,4 +16,5 @@ public class Constants {
 	public static final String PREDICATE_OS = "/Predicate_os/";
 	public static final String SUBJECT = "/Subject/";
 	public static final String OBJECT = "/Object/";
+	public static final String TPMAP = "tpmap";
 }

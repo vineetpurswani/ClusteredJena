@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import mapper.LogicalTableJoinMapper;
 import mapper.SelectionMapper;
@@ -27,6 +26,7 @@ import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.OutputFormat;
 import org.apache.hadoop.util.Tool;
+import org.bitmat.extras.StringSerialization;
 
 import reducers.LogicalTableJoinReducer;
 import reducers.SelectionReducer;
@@ -45,7 +45,6 @@ import format.LogicalTableInputFormat;
 import format.TriplesOutputFormat;
 import format.WholeFileInputFormat;
 
-@SuppressWarnings("deprecation")
 public class MapRedQueryTool extends Configured implements Tool { 
 
 	SPARQLQuery queryRunner = null;
@@ -54,7 +53,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 	List<Node> variableOrder = null;
 	HashMap<Node, JoinGroup> nodeToGroup = null;
 	HashMap<Integer, JoinGroup> tripleToGroup = null;
-	private HashMap<String,Long> key_val = new HashMap<String, Long>();	
+	private HashMap<String,Long> idmap = new HashMap<String, Long>();	
 
 	public MapRedQueryTool(SPARQLQuery queryRunner, Query query,String filename_so,String filename_p) throws ClassNotFoundException, FileNotFoundException, IOException{
 		this.queryRunner = queryRunner;
@@ -76,7 +75,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 		ObjectInputStream objin = new ObjectInputStream(new FileInputStream(filename_so));
 		HashMap<String, Long> tempmap_so = (HashMap<String, Long>) objin.readObject();
 		objin.close();
-		
+
 		objin = new ObjectInputStream(new FileInputStream(filename_p));
 		HashMap<String, Long> tempmap_p = (HashMap<String, Long>) objin.readObject();
 		objin.close();
@@ -89,15 +88,12 @@ public class MapRedQueryTool extends Configured implements Tool {
 			Node predicate = triple.getPredicate();
 
 			if(object.isConcrete())
-				key_val.put(object.toString(), tempmap_so.get(object.toString()));
+				idmap.put(object.toString(), tempmap_so.get(object.toString()));
 			if(subject.isConcrete())
-				key_val.put(subject.toString(), tempmap_so.get(subject.toString()));
+				idmap.put(subject.toString(), tempmap_so.get(subject.toString()));
 			if(predicate.isConcrete())
-				key_val.put(predicate.toString(), tempmap_p.get(predicate.toString()));
+				idmap.put(predicate.toString(), tempmap_p.get(predicate.toString()));
 		}
-		
-		
-		
 	}
 	@Override
 	public int run(String[] args) throws Exception {
@@ -124,8 +120,8 @@ public class MapRedQueryTool extends Configured implements Tool {
 				//System.out.println("TableList:"+tableList);
 
 				List<Path> inputPaths = group.getInputPaths(joinPhaseCount);
-				
-				
+
+
 				joinPhase(joinPhaseCount, joinValue, noOfTables, tableList,inputPaths);
 
 				//System.out.println(node+" -> needs joins -> "+group);
@@ -137,7 +133,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 			joinedGroup.putAll(group.getJoinedList());
 
 		}
-		
+
 		return 0;
 	}
 
@@ -156,7 +152,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 
 		conf.set(Constants.JOIN_VALUE, joinValue);
 		conf.set(Constants.NO_OF_TABLES, noOfTables+"");
-		//conf.set(Constants.key_val, pair_str);
+		//conf.set(Constants.idmap, pair_str);
 
 		conf.set(Constants.LIST_OF_TABLES, tableNames);
 
@@ -167,8 +163,9 @@ public class MapRedQueryTool extends Configured implements Tool {
 			System.out.println("Path in Join:"+ inputPath);
 			FileInputFormat.addInputPath(conf, inputPath);
 		}
-
-		FileOutputFormat.setOutputPath(conf, new Path(Constants.OUTPUT_DIR+(joinPhase+1)+"/"));
+		
+		Path outputFilePath = new Path(Constants.OUTPUT_DIR+(joinPhase+1)+"/");
+		FileOutputFormat.setOutputPath(conf, outputFilePath);
 
 		conf.setOutputKeyClass(Text.class);
 		conf.setOutputValueClass(Text.class);
@@ -179,6 +176,11 @@ public class MapRedQueryTool extends Configured implements Tool {
 		conf.setInputFormat(LogicalTableInputFormat.class);
 		conf.setOutputFormat(TriplesOutputFormat.class);
 
+		FileSystem fs = FileSystem.newInstance(getConf());
+		if (fs.exists(outputFilePath)) {
+			fs.delete(outputFilePath, true);
+		}
+		
 		JobClient.runJob(conf);
 
 		return 0;
@@ -196,17 +198,17 @@ public class MapRedQueryTool extends Configured implements Tool {
 		}		
 		conf.set(Constants.QUERY_STRING, query.toString());
 		conf.set(Constants.ARGS,args.toString());
-		conf.set(Constants.key_val, "/home/hduser/query.hash");
+		conf.set(Constants.IDMAP, StringSerialization.toString(idmap));
 		conf.setJobName("Map Reduce SPARQL Query");
 
-		System.out.println("Adding config values");
-		ObjectOutputStream objout = new ObjectOutputStream(new FileOutputStream("/home/hduser/query.hash"));
-		objout.writeObject(key_val);
-		objout.close();
+//		System.out.println("Adding config values");
+//		ObjectOutputStream objout = new ObjectOutputStream(new FileOutputStream("/home/hduser/query.hash"));
+//		objout.writeObject(idmap);
+//		objout.close();
 
 		//List<String> listOfkeys = getListOfWords(pattern);
 
-		ArrayList<String>  inputPaths = fetchBitMatPathList();
+		ArrayList<String>  inputPaths = fetchBitMatPathList(conf);
 
 		Iterator<String> i = inputPaths.iterator();
 
@@ -214,8 +216,9 @@ public class MapRedQueryTool extends Configured implements Tool {
 			String inputPath = i.next();
 			FileInputFormat.addInputPath(conf, new Path(inputPath));
 		}
+		
 		Path outputFilePath = new Path("/output1/");
-		FileOutputFormat.setOutputPath(conf, new Path("/output1/"));
+		FileOutputFormat.setOutputPath(conf, outputFilePath);
 
 		conf.setOutputKeyClass(Text.class);
 		conf.setOutputValueClass(Text.class);
@@ -231,7 +234,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 		if (fs.exists(outputFilePath)) {
 			fs.delete(outputFilePath, true);
 		}
-		
+
 		System.out.println("Starting JobClient.runJob");
 		JobClient.runJob(conf);
 		System.out.println("Stop run method..");
@@ -265,10 +268,13 @@ public class MapRedQueryTool extends Configured implements Tool {
 		return null;
 	}
 
-	public ArrayList<String>  fetchBitMatPathList()
+	public ArrayList<String>  fetchBitMatPathList(JobConf conf) throws IOException
 	{
 		Iterator<Triple> iter = pattern.iterator();
 		ArrayList<String> inputPaths = new ArrayList<String>();
+		HashMap<String, ArrayList<Integer>> tpmap = new HashMap<String, ArrayList<Integer>>();
+		int pnum = 0;
+		
 		while(iter.hasNext()){
 			Triple triple = iter.next();
 			Node object = triple.getObject();
@@ -278,33 +284,27 @@ public class MapRedQueryTool extends Configured implements Tool {
 			boolean sub = subject.isConcrete();
 			boolean obj = object.isConcrete();
 			boolean pred = predicate.isConcrete();
-			
-			//System.out.println("Printing Keys Present In the Map : ");
-			
-			/*Iterator it = key_val.entrySet().iterator();
-		    while (it.hasNext()) {
-		        Map.Entry pair = (Map.Entry)it.next();
-		        System.out.println(pair.getKey() + "  " + pair.getValue());
-		        it.remove(); // avoids a ConcurrentModificationException
-		    }
-		    */
-			
-			
-			System.out.println(predicate.toString());
-			if(!sub && !obj )
-				inputPaths.add(Constants.PREDICATE_SO + Constants.BITMAT + key_val.get(predicate.toString()).toString());
-			else if(!sub && !pred)
-				inputPaths.add(Constants.OBJECT + Constants.BITMAT + key_val.get(object.toString()).toString());
-			else if(!pred && !obj)
-				inputPaths.add(Constants.SUBJECT + Constants.BITMAT + key_val.get(subject.toString()).toString());
-			else if(!sub)
-				inputPaths.add(Constants.PREDICATE_OS  + Constants.BITMAT + key_val.get(predicate.toString()).toString());
-			else if(!obj)
-				inputPaths.add( Constants.SUBJECT + Constants.BITMAT + key_val.get(subject.toString()).toString());
-			else
-				inputPaths.add(Constants.OBJECT + Constants.BITMAT + key_val.get(object.toString()).toString());
 
+			String path = "";
+			if(!sub && !obj )
+				path = Constants.PREDICATE_SO + Constants.BITMAT + idmap.get(predicate.toString()).toString();
+			else if(!sub && !pred)
+				path = Constants.OBJECT + Constants.BITMAT + idmap.get(object.toString()).toString();
+			else if(!pred && !obj)
+				path = Constants.SUBJECT + Constants.BITMAT + idmap.get(subject.toString()).toString();
+			else if(!sub)
+				path = Constants.PREDICATE_OS  + Constants.BITMAT + idmap.get(predicate.toString()).toString();
+			else if(!obj)
+				path = Constants.SUBJECT + Constants.BITMAT + idmap.get(subject.toString()).toString();
+			else
+				path = Constants.OBJECT + Constants.BITMAT + idmap.get(object.toString()).toString();
+			
+			if (!tpmap.containsKey(path)) tpmap.put(path, new ArrayList());
+			tpmap.get(path).add(++pnum);
 		}
+		
+		inputPaths.addAll(tpmap.keySet());
+		conf.set("tpmap", StringSerialization.toString(tpmap));
 		return inputPaths;
 	}
 
