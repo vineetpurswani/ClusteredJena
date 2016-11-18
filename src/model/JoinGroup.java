@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeSet;
 
 import org.apache.hadoop.fs.Path;
 
@@ -15,8 +17,10 @@ import utils.Constants;
 public class JoinGroup{
 
 	HashMap<Integer, Triple> hashMap = new HashMap<Integer, Triple>();	
-	List<Integer> tableList = new ArrayList<Integer>();
+	Set<Integer> tableList = new TreeSet<Integer>();
+	Set<Integer> moreTableList = new TreeSet<Integer>();
 	boolean isJoined = false;
+	int phaseNum = 0;
 
 	public JoinGroup(){		
 	}
@@ -61,7 +65,9 @@ public class JoinGroup{
 			JoinGroup group = null;
 			Integer table = i.next();			
 			group = tripleToGroup.get(table);			
-			if(group!=null && group.isJoined()) tableListString.append(group.getJoinedTableName()).append(delimiter);
+			if(group!=null && group.isJoined()) {
+				tableListString.append(group.getJoinedTableName("")).append(delimiter);
+			}
 			else tableListString.append("Triple_").append(table.toString()).append(delimiter);
 		}
 		tableListString.delete(tableListString.length()-delimiter.length(),tableListString.length());
@@ -86,13 +92,15 @@ public class JoinGroup{
 		return isJoined;
 	}
 
-	public void joined(){
+	public void joined(int phase){
 		this.isJoined = true;
+		this.phaseNum = phase;
+		this.tableList.addAll(moreTableList);
 	}
 
-	public String getJoinedTableName(){
+	public String getJoinedTableName(String delimiter){
 		if(isJoined){
-			return this.getTableList(Constants.DELIMIT);
+			return this.getTableList(delimiter);
 		}
 		return null;
 	}
@@ -103,12 +111,15 @@ public class JoinGroup{
 		while(i.hasNext()){
 			Integer number = i.next();
 			String paths = "";
-			if (tripleToGroup.containsKey(number)) paths = Constants.OUTPUT_DIR+joinPhaseCount+"/"+tripleToGroup.get(number).getTableList("");
+			if (tripleToGroup.containsKey(number) && tripleToGroup.get(number).isJoined()) {
+				paths = Constants.OUTPUT_DIR+tripleToGroup.get(number).phaseNum+"/"+tripleToGroup.get(number).getTableList("");
+				moreTableList.addAll(tripleToGroup.get(number).tableList);
+			}
 			else paths = Constants.OUTPUT_DIR+1+"/"+"Triple_"+number;
 			Path path = new Path(paths);
 			inputPaths.add(path);
 		}
-		return inputPaths;		
+		return inputPaths;
 	}
 
 	public HashMap<Integer, JoinGroup> getJoinedList(){

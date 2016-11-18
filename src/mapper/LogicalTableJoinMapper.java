@@ -42,12 +42,9 @@ implements Mapper<Text, HashMap<String, String>, Text, Text> {
 			Reporter reporter) throws IOException {		
 		Text outputKey = new Text();
 		outputKey.set(generateOutputKey(value));		
-		//log.info("OutputKey:"+outputKey);		
-				
-		
+
 		Text outputValue = new Text();
 		outputValue.set(generateOutputValue(key,value));		
-		//log.info("OutputValue:"+outputValue);		
 		System.out.println(outputKey + " " + outputValue);
 		output.collect(outputKey, outputValue);
 	}
@@ -59,7 +56,6 @@ implements Mapper<Text, HashMap<String, String>, Text, Text> {
 	}
 	
 	public String generateOutputValue(Text key,HashMap<String,String> value){
-		
 		Iterator<Entry<String,String>> i = value.entrySet().iterator();
 		StringBuilder builder = new StringBuilder();
 		builder.append("{").append(key).append("}");

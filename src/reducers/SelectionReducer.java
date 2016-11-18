@@ -21,7 +21,7 @@ public class SelectionReducer extends MapReduceBase implements
 	public void reduce(Text key, Iterator<Text> values,
 			OutputCollector<Text, Text> output, Reporter reporter)
 			throws IOException {
-		//System.out.println("Reducing..");
+		System.out.println("Reducing..");
 		
 		StringBuilder builder = new StringBuilder();
 		builder.append("Triple_").append(key.toString());
@@ -29,9 +29,8 @@ public class SelectionReducer extends MapReduceBase implements
 		
 		while(values.hasNext()){
 			Text value = values.next();
-			//System.out.println("key: "+counter +", value:"+value);
 			
-			
+			System.out.println("key: "+newKey+", value:"+value);
 			output.collect(newKey, value);
 		}		
 	}

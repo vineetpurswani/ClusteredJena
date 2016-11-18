@@ -19,10 +19,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
-import org.apache.hadoop.mapred.InputFormat;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.OutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.bitmat.extras.StringSerialization;
 
@@ -53,7 +51,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 	HashMap<Integer, JoinGroup> tripleToGroup = null;
 	private HashMap<String,Long> idmap = new HashMap<String, Long>();	
 
-	public MapRedQueryTool(SPARQLQuery queryRunner, Query query,String filename_so,String filename_p) throws ClassNotFoundException, FileNotFoundException, IOException{
+	public MapRedQueryTool(SPARQLQuery queryRunner, Query query,String filename_spo) throws ClassNotFoundException, FileNotFoundException, IOException{
 		this.queryRunner = queryRunner;
 		this.query = query;
 
@@ -70,12 +68,8 @@ public class MapRedQueryTool extends Configured implements Tool {
 
 		getListOfWords(this.pattern);
 
-		ObjectInputStream objin = new ObjectInputStream(new FileInputStream(filename_so));
-		HashMap<String, Long> tempmap_so = (HashMap<String, Long>) objin.readObject();
-		objin.close();
-
-		objin = new ObjectInputStream(new FileInputStream(filename_p));
-		HashMap<String, Long> tempmap_p = (HashMap<String, Long>) objin.readObject();
+		ObjectInputStream objin = new ObjectInputStream(new FileInputStream(filename_spo));
+		HashMap<String, Long> tempmap_spo = (HashMap<String, Long>) objin.readObject();
 		objin.close();
 
 		Iterator<Triple> iter = pattern.iterator();
@@ -86,11 +80,11 @@ public class MapRedQueryTool extends Configured implements Tool {
 			Node predicate = triple.getPredicate();
 
 			if(object.isConcrete())
-				idmap.put(object.toString(), tempmap_so.get(object.toString()));
+				idmap.put(object.toString(), tempmap_spo.get(object.toString()));
 			if(subject.isConcrete())
-				idmap.put(subject.toString(), tempmap_so.get(subject.toString()));
+				idmap.put(subject.toString(), tempmap_spo.get(subject.toString()));
 			if(predicate.isConcrete())
-				idmap.put(predicate.toString(), tempmap_p.get(predicate.toString()));
+				idmap.put(predicate.toString(), tempmap_spo.get(predicate.toString()));
 		}
 	}
 	@Override
@@ -119,24 +113,18 @@ public class MapRedQueryTool extends Configured implements Tool {
 
 				List<Path> inputPaths = group.getInputPaths(joinPhaseCount, joinedGroup);
 
+				group.joined(joinPhaseCount+1);
+				joinedGroup.putAll(group.getJoinedList());
 
-				joinPhase(joinPhaseCount, joinValue, noOfTables, tableList,inputPaths);
-
-				//System.out.println(node+" -> needs joins -> "+group);
-
-				joinPhaseCount++;
+				joinPhase(joinPhaseCount++, joinValue, noOfTables, tableList, inputPaths, group.getJoinedTableName(""));
 			}
-			group.joined();
-
-			joinedGroup.putAll(group.getJoinedList());
-
 		}
 
 		return 0;
 	}
 
 	@SuppressWarnings("unused")
-	public int joinPhase(int joinPhase,String joinValue, int noOfTables, String tableNames, List<Path> inputPaths) throws IOException{
+	public int joinPhase(int joinPhase,String joinValue, int noOfTables, String tableNames, List<Path> inputPaths, String newTableName) throws IOException{
 
 		JobConf conf = new JobConf(getConf(), getClass());
 
@@ -151,6 +139,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 		conf.set(Constants.JOIN_VALUE, joinValue);
 		conf.set(Constants.NO_OF_TABLES, noOfTables+"");
 		conf.set(Constants.LIST_OF_TABLES, tableNames);
+		conf.set(Constants.NEW_TABLE_NAME, newTableName);
 
 		Iterator<Path> i = inputPaths.iterator();
 

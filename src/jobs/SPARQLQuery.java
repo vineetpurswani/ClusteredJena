@@ -19,14 +19,14 @@ public class SPARQLQuery extends query {
 	}
 
 	public static void main(String[] args){
-		SPARQLQuery queryRunner = new SPARQLQuery(Arrays.copyOfRange(args, 2, 3));
+		SPARQLQuery queryRunner = new SPARQLQuery(Arrays.copyOfRange(args, 1, 2));
 		queryRunner.process();
 		
 		Query query = queryRunner.getQueryObject();
 		
 		MapRedQueryTool queryTool = null;
 		try {
-			queryTool = new MapRedQueryTool(queryRunner,query,args[0],args[1]);
+			queryTool = new MapRedQueryTool(queryRunner,query,args[0]);
 		} catch (ClassNotFoundException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

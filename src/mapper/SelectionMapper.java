@@ -78,7 +78,7 @@ public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMa
 	@Override
 	public void close() throws IOException { }
 
-	public Text get_value(Long row_id,Long col_id,Triple to_match)
+	public Text get_value(Long row_id,Long col_id,Triple to_match, boolean isTwoVar)
 	{
 		StringBuilder value = new StringBuilder();
 		if(bitmat_type == "SO"){
@@ -86,16 +86,16 @@ public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMa
 			value.append("[").append(to_match.getObject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
 		}
 		else if(bitmat_type == "OS"){
-			value.append("[").append(to_match.getObject().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
+			if (isTwoVar) value.append("[").append(to_match.getObject().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
 			value.append("[").append(to_match.getSubject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
 		}
 		else if(bitmat_type == "PO"){
-			value.append("[").append(to_match.getPredicate().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
+			if (isTwoVar) value.append("[").append(to_match.getPredicate().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
 			value.append("[").append(to_match.getObject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
 		}
 		else
 		{
-			value.append("[").append(to_match.getPredicate().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
+			if (isTwoVar) value.append("[").append(to_match.getPredicate().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
 			value.append("[").append(to_match.getSubject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
 		}
 		return new Text(value.toString());
@@ -112,8 +112,11 @@ public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMa
 			}
 			// Case 2 : Single Variable
 			else {
+				System.out.println(ttriple);
 				if (bitmat_type == "SO"); 									// not possible
 				else if (bitmat_type == "OS") { 							// object is concrete
+					System.out.println(ttriple.getObject().toString());
+					System.out.println(idmap);
 					Long obj = idmap.get(ttriple.getObject().toString());
 					if (!concreteNodes.containsKey(obj)) concreteNodes.put(obj, new ArrayList<Integer>());
 					concreteNodes.get(obj).add(i);
@@ -143,10 +146,10 @@ public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMa
 					for(;start_col_id < col_val;start_col_id++)
 					{
 						for (Integer twoVar : tpTwoVariable)
-							output.collect(new Text(twoVar.toString()),get_value(start_row_id, start_col_id, pattern.get(twoVar - 1)));
+							output.collect(new Text(twoVar.toString()),get_value(start_row_id, start_col_id, pattern.get(twoVar - 1), true));
 						if (concreteNodes.containsKey(start_row_id)) {
 							for (Integer oneVar : concreteNodes.get(start_row_id))
-								output.collect(new Text(oneVar.toString()),get_value(start_row_id, start_col_id, pattern.get(oneVar - 1)));
+								output.collect(new Text(oneVar.toString()),get_value(start_row_id, start_col_id, pattern.get(oneVar - 1), false));
 						}
 					}
 				}

@@ -5,8 +5,8 @@
 	<classpathentry kind="lib" path="/usr/local/hadoop/share/hadoop/common/hadoop-common-2.7.3.jar"/>
 	<classpathentry kind="lib" path="/usr/local/hadoop/share/hadoop/tools/lib/commons-logging-1.1.3.jar"/>
 	<classpathentry kind="lib" path="/usr/local/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-client-core-2.7.3.jar"/>
-	<classpathentry kind="lib" path="/usr/local/share/jena/jena.jar"/>
-	<classpathentry kind="lib" path="/usr/local/share/jena/arq-2.8.7.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/BitMatDatabase"/>
+	<classpathentry kind="lib" path="/usr/local/share/jena/hpl/arq-2.8.7.jar"/>
+	<classpathentry kind="lib" path="/usr/local/share/jena/hpl/jena.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
