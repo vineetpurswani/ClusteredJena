@@ -18,4 +18,7 @@ public class Constants {
 	public static final String OBJECT = "/Object/";
 	public static final String TPMAP = "tpmap";
 	public static final String NEW_TABLE_NAME = "NewTableName";
+	public static enum BitMatType {
+		SO, OS, PS, PO
+	}
 }

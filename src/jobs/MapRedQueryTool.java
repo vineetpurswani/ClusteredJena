@@ -16,13 +16,17 @@ import model.JoinGroup;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
 import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.SequenceFileInputFormat;
 import org.apache.hadoop.util.Tool;
 import org.bitmat.extras.StringSerialization;
+import org.bitmat.pruning.BitMatPruningMapper;
+import org.bitmat.pruning.BitMatPruningReducer;
 
 import reducers.LogicalTableJoinReducer;
 import reducers.SelectionReducer;
@@ -37,6 +41,7 @@ import com.hp.hpl.jena.sparql.algebra.op.OpBGP;
 import com.hp.hpl.jena.sparql.algebra.op.OpProject;
 import com.hp.hpl.jena.sparql.core.BasicPattern;
 
+import format.BitMaskOutputFormat;
 import format.LogicalTableInputFormat;
 import format.TriplesOutputFormat;
 import format.WholeFileInputFormat;
@@ -89,7 +94,8 @@ public class MapRedQueryTool extends Configured implements Tool {
 	}
 	@Override
 	public int run(String[] args) throws Exception {
-
+		pruningPhase(args);
+//		System.exit(0);
 		selectionPhase(args);
 
 		// Next Join phase....
@@ -125,13 +131,11 @@ public class MapRedQueryTool extends Configured implements Tool {
 
 	@SuppressWarnings("unused")
 	public int joinPhase(int joinPhase,String joinValue, int noOfTables, String tableNames, List<Path> inputPaths, String newTableName) throws IOException{
-
+		System.out.println("Start join phase..");
 		JobConf conf = new JobConf(getConf(), getClass());
-
 		conf.setJobName("Map Reduce SPARQL Query Join variable + s");
 
 		System.out.println("conf:"+conf);
-
 		if (conf == null) {
 			return -1;
 		}		
@@ -173,8 +177,7 @@ public class MapRedQueryTool extends Configured implements Tool {
 
 	@SuppressWarnings({ "unused", "unchecked", "rawtypes" })
 	public int selectionPhase(String[] args) throws IOException {
-
-		System.out.println("Start run method..");
+		System.out.println("Start selection phase..");
 		JobConf conf = new JobConf(getConf(), getClass());
 
 		System.out.println("conf:"+conf);
@@ -186,14 +189,17 @@ public class MapRedQueryTool extends Configured implements Tool {
 		conf.set(Constants.IDMAP, StringSerialization.toString(idmap));
 		conf.setJobName("Map Reduce SPARQL Query");
 
-		ArrayList<String>  inputPaths = fetchBitMatPathList(conf);
 
+		HashMap<String, ArrayList<Integer>> tpmap = new HashMap<String, ArrayList<Integer>>();
+		ArrayList<String>  inputPaths = fetchBitMatPathList(tpmap,false);
 		Iterator<String> i = inputPaths.iterator();
-
 		while(i.hasNext()){
 			String inputPath = i.next();
 			FileInputFormat.addInputPath(conf, new Path(inputPath));
 		}
+		conf.set("tpmap", StringSerialization.toString(tpmap));
+		tpmap.clear();
+		inputPaths.clear();
 		
 		Path outputFilePath = new Path("/output1/");
 		FileOutputFormat.setOutputPath(conf, outputFilePath);
@@ -220,14 +226,62 @@ public class MapRedQueryTool extends Configured implements Tool {
 		return 0;
 
 	}
+	
+	@SuppressWarnings("unused")
+	public int pruningPhase(String[] args) throws IOException {
+		System.out.println("Start pruning phase..");
+		JobConf conf = new JobConf(getConf(), getClass());
+
+		System.out.println("conf:"+conf);
+		if (conf == null) {
+			return -1;
+		}		
+		conf.set(Constants.QUERY_STRING, query.toString());
+		conf.set(Constants.ARGS,args.toString());
+		conf.set(Constants.IDMAP, StringSerialization.toString(idmap));
+		conf.setJobName("Map Reduce SPARQL Query");
+
+		HashMap<String, ArrayList<Integer>> tpmap = new HashMap<String, ArrayList<Integer>>();
+		ArrayList<String>  inputPaths = fetchBitMatPathList(tpmap,true);
+		Iterator<String> i = inputPaths.iterator();
+		while(i.hasNext()){
+			String inputPath = i.next();
+			FileInputFormat.addInputPath(conf, new Path(inputPath));
+		}
+		conf.set("tpmap", StringSerialization.toString(tpmap));
+		tpmap.clear();
+		inputPaths.clear();
+		
+		Path outputFilePath = new Path("/bitmasks/");
+		FileOutputFormat.setOutputPath(conf, outputFilePath);
+
+		conf.setOutputKeyClass(Text.class);
+		conf.setOutputValueClass(BytesWritable.class);
+
+		conf.setMapperClass(BitMatPruningMapper.class);
+		conf.setReducerClass(BitMatPruningReducer.class);
+
+		conf.setInputFormat(SequenceFileInputFormat.class);
+		conf.setOutputFormat(BitMaskOutputFormat.class);
+
+
+		FileSystem fs = FileSystem.newInstance(getConf());
+		if (fs.exists(outputFilePath)) {
+			fs.delete(outputFilePath, true);
+		}
+
+		System.out.println("Starting JobClient.runJob");
+		JobClient.runJob(conf);
+		System.out.println("Stop run method..");
+
+		return 0;
+	}
 
 	public void getListOfWords(BasicPattern pattern){
 		System.out.println("Printing Keys Present In The Patterns :");
 		Iterator<Triple> i = pattern.getList().iterator();
 		while(i.hasNext()){
-
 			Triple triple = i.next();
-
 			String key = null;
 
 			if((key=getKey(triple.getSubject()))!=null) System.out.println(key);
@@ -246,12 +300,12 @@ public class MapRedQueryTool extends Configured implements Tool {
 		return null;
 	}
 
-	public ArrayList<String>  fetchBitMatPathList(JobConf conf) throws IOException
+	public ArrayList<String> fetchBitMatPathList(HashMap<String, ArrayList<Integer>> tpmap, boolean needMeta) throws IOException
 	{
 		Iterator<Triple> iter = pattern.iterator();
 		ArrayList<String> inputPaths = new ArrayList<String>();
-		HashMap<String, ArrayList<Integer>> tpmap = new HashMap<String, ArrayList<Integer>>();
 		int pnum = 0;
+		String metaSuffix = needMeta ? ".meta" : "";
 		
 		while(iter.hasNext()){
 			Triple triple = iter.next();
@@ -263,29 +317,54 @@ public class MapRedQueryTool extends Configured implements Tool {
 			boolean obj = object.isConcrete();
 			boolean pred = predicate.isConcrete();
 
-			String path = "";
-			if(!sub && !obj )
-				path = Constants.PREDICATE_SO + Constants.BITMAT + idmap.get(predicate.toString()).toString();
-			else if(!sub && !pred)
-				path = Constants.OBJECT + Constants.BITMAT + idmap.get(object.toString()).toString();
-			else if(!pred && !obj)
-				path = Constants.SUBJECT + Constants.BITMAT + idmap.get(subject.toString()).toString();
-			else if(!sub)
-				path = Constants.PREDICATE_OS  + Constants.BITMAT + idmap.get(predicate.toString()).toString();
-			else if(!obj)
-				path = Constants.SUBJECT + Constants.BITMAT + idmap.get(subject.toString()).toString();
-			else
-				path = Constants.OBJECT + Constants.BITMAT + idmap.get(object.toString()).toString();
+			StringBuilder path = new StringBuilder();
+			if (!sub && !obj && !pred) throw new Error("Unhandled case of three variables.");
+			else if (!sub && !obj ) {
+				path.append(Constants.PREDICATE_SO);
+				path.append(Constants.BITMAT);
+				path.append(idmap.get(predicate.toString()));
+				path.append(metaSuffix);
+			}
+			else if(!sub && !pred) {
+				path.append(Constants.OBJECT);
+				path.append(Constants.BITMAT);
+				path.append(idmap.get(predicate.toString()));
+				path.append(metaSuffix);
+			}
+			else if(!pred && !obj) {
+				path.append(Constants.SUBJECT);
+				path.append(Constants.BITMAT);
+				path.append(idmap.get(predicate.toString()));
+				path.append(metaSuffix);
+			}
+			else if(!sub) {
+				path.append(Constants.PREDICATE_OS);
+				path.append(Constants.BITMAT);
+				path.append(idmap.get(predicate.toString()));
+				path.append(metaSuffix);
+			}
+			else if(!obj) {
+				path.append(Constants.SUBJECT);
+				path.append(Constants.BITMAT);
+				path.append(idmap.get(predicate.toString()));
+				path.append(metaSuffix);
+			}
+			else if(!pred) {
+				path.append(Constants.OBJECT);
+				path.append(Constants.BITMAT);
+				path.append(idmap.get(predicate.toString()));
+				path.append(metaSuffix);
+			}
 			
-			if (!tpmap.containsKey(path)) tpmap.put(path, new ArrayList());
-			tpmap.get(path).add(++pnum);
+			String pstr = path.toString();
+			if (!tpmap.containsKey(pstr)) tpmap.put(pstr, new ArrayList());
+			tpmap.get(pstr).add(++pnum);
 		}
 		
 		inputPaths.addAll(tpmap.keySet());
-		conf.set("tpmap", StringSerialization.toString(tpmap));
 		return inputPaths;
 	}
-
+	
 	public static HashMap<Node, JoinGroup> extractJoinTriples(BasicPattern pattern, HashMap<Integer, JoinGroup> tripleToGroup, List<Node> variableOrder){
 
 		HashMap<Node,JoinGroup> varList = new HashMap<Node, JoinGroup>();		

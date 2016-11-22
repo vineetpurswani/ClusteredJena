@@ -54,8 +54,6 @@ Reducer<Text, Text, Text, Text> {
 	public void reduce(Text key, Iterator<Text> values,
 			OutputCollector<Text, Text> output, Reporter reporter)
 					throws IOException {
-		System.out.println("Starting reduce....");
-		
 		HashSet<String> files = new HashSet<String>();
 		HashMap<String, ArrayList<String>> remainingStringList = new HashMap<String, ArrayList<String>>();
 
