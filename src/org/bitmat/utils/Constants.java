@@ -1,4 +1,4 @@
-package utils;
+package org.bitmat.utils;
 
 public class Constants {
 	public static final String MODEL = "model";

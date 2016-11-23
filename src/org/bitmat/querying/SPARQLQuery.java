@@ -1,4 +1,4 @@
-package jobs;
+package org.bitmat.querying;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;

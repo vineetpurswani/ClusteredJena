@@ -1,4 +1,4 @@
-package reducers;
+package org.bitmat.querying.join;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -14,8 +14,8 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reducer;
 import org.apache.hadoop.mapred.MapReduceBase;
 import org.apache.hadoop.mapred.Reporter;
+import org.bitmat.utils.Constants;
 
-import utils.Constants;
 
 public class LogicalTableJoinReducer extends MapReduceBase implements
 Reducer<Text, Text, Text, Text> {
@@ -82,7 +82,7 @@ Reducer<Text, Text, Text, Text> {
 			ArrayList<String> keyList, int index, String newValue,
 			OutputCollector<Text, Text> output) throws IOException {
 		if (index == keyList.size()) {
-			System.out.println(newTableName + " " + newValue.toString());
+//			System.out.println(newTableName + " " + newValue.toString());
 			output.collect(new Text(newTableName), new Text(newValue));
 			return;
 		}

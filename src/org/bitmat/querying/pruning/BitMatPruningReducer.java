@@ -1,4 +1,4 @@
-package org.bitmat.pruning;
+package org.bitmat.querying.pruning;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,9 +12,10 @@ import org.apache.hadoop.mapred.MapReduceBase;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reducer;
 import org.apache.hadoop.mapred.Reporter;
+import org.bitmat.extras.BitMatRowWritable;
 import org.bitmat.extras.StringSerialization;
+import org.bitmat.utils.Constants;
 
-import utils.Constants;
 
 import com.hp.hpl.jena.graph.Triple;
 import com.hp.hpl.jena.query.Query;
@@ -25,7 +26,7 @@ import com.hp.hpl.jena.sparql.algebra.op.OpBGP;
 import com.hp.hpl.jena.sparql.algebra.op.OpProject;
 import com.hp.hpl.jena.sparql.core.BasicPattern;
 
-public class BitMatPruningReducer extends MapReduceBase implements Reducer<Text, BytesWritable, Text, BytesWritable> {
+public class BitMatPruningReducer extends MapReduceBase implements Reducer<Text, BitMatRowWritable, Text, BitMatRowWritable> {
 	private BasicPattern pattern = null;
 	
 	private ArrayList<Integer> tpnodeList(String tvar) {
@@ -40,7 +41,6 @@ public class BitMatPruningReducer extends MapReduceBase implements Reducer<Text,
 		return tpnodes;
 	}
 	
-	@Override
 	public void configure(JobConf job) {
 		String queryString = job.get(Constants.QUERY_STRING);
 		Query query = QueryFactory.create(queryString);
@@ -52,25 +52,20 @@ public class BitMatPruningReducer extends MapReduceBase implements Reducer<Text,
 	}
 	
 	@Override
-	public void reduce(Text key, Iterator<BytesWritable> value,
-			OutputCollector<Text, BytesWritable> output, Reporter r)
+	public void reduce(Text key, Iterator<BitMatRowWritable> value,
+			OutputCollector<Text, BitMatRowWritable> output, Reporter r)
 			throws IOException {
-		ArrayList<Boolean> vemit = new ArrayList<Boolean>();
+		BitMatRowWritable row = new BitMatRowWritable(-1L);
+		System.out.println(key);
 		while (value.hasNext()) {
-			try {
-				ArrayList<Boolean> vtemp = (ArrayList<Boolean>) StringSerialization.fromByteArray(value.next().getBytes());
-				if (vemit.size() < vtemp.size()) vemit.addAll(Collections.nCopies(vtemp.size() - vemit.size(), true));
-				
-				for (int i=0; i<vtemp.size(); i++) {
-					vemit.set(i, vemit.get(i) & vtemp.get(i));
-				}
-			} catch (ClassNotFoundException e) {
-				e.printStackTrace();
-			}
+			BitMatRowWritable t = value.next(); 
+			System.out.println(t);
+			row.unFold(t);
 		}
+		System.out.println(row);
 		
 		for (Integer tid : tpnodeList(key.toString())) {
-			output.collect(new Text("tpbm_"+tid+"["+key.toString()+"]"), new BytesWritable(StringSerialization.toByteArray(vemit)));
+			output.collect(new Text("tpbm_"+tid+"["+key.toString()+"]"), row);
 		}
 	}
 

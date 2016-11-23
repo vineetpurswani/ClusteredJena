@@ -1,4 +1,4 @@
-package jobs;
+package org.bitmat.querying;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -9,14 +9,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import mapper.LogicalTableJoinMapper;
-import mapper.SelectionMapper;
-import model.JoinGroup;
 
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
@@ -24,13 +22,21 @@ import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.SequenceFileInputFormat;
 import org.apache.hadoop.util.Tool;
+import org.bitmat.extras.BitMatRowWritable;
 import org.bitmat.extras.StringSerialization;
-import org.bitmat.pruning.BitMatPruningMapper;
-import org.bitmat.pruning.BitMatPruningReducer;
+import org.bitmat.formats.BitMaskOutputFormat;
+import org.bitmat.formats.LogicalTableInputFormat;
+import org.bitmat.formats.TriplesOutputFormat;
+import org.bitmat.formats.WholeFileInputFormat;
+import org.bitmat.querying.join.LogicalTableJoinMapper;
+import org.bitmat.querying.join.LogicalTableJoinReducer;
+import org.bitmat.querying.pruning.BitMatPruningMapper;
+import org.bitmat.querying.pruning.BitMatPruningReducer;
+import org.bitmat.querying.selection.SelectionMapper;
+import org.bitmat.querying.selection.SelectionReducer;
+import org.bitmat.utils.Constants;
+import org.bitmat.utils.JoinGroup;
 
-import reducers.LogicalTableJoinReducer;
-import reducers.SelectionReducer;
-import utils.Constants;
 
 import com.hp.hpl.jena.graph.Node;
 import com.hp.hpl.jena.graph.Triple;
@@ -41,10 +47,6 @@ import com.hp.hpl.jena.sparql.algebra.op.OpBGP;
 import com.hp.hpl.jena.sparql.algebra.op.OpProject;
 import com.hp.hpl.jena.sparql.core.BasicPattern;
 
-import format.BitMaskOutputFormat;
-import format.LogicalTableInputFormat;
-import format.TriplesOutputFormat;
-import format.WholeFileInputFormat;
 
 public class MapRedQueryTool extends Configured implements Tool { 
 
@@ -95,8 +97,8 @@ public class MapRedQueryTool extends Configured implements Tool {
 	@Override
 	public int run(String[] args) throws Exception {
 		pruningPhase(args);
-//		System.exit(0);
 		selectionPhase(args);
+//		System.exit(0);
 
 		// Next Join phase....
 		HashMap<Integer, JoinGroup> joinedGroup = new HashMap<Integer, JoinGroup>();
@@ -255,8 +257,11 @@ public class MapRedQueryTool extends Configured implements Tool {
 		Path outputFilePath = new Path("/bitmasks/");
 		FileOutputFormat.setOutputPath(conf, outputFilePath);
 
+		conf.setMapOutputKeyClass(Text.class);
+		conf.setMapOutputValueClass(BitMatRowWritable.class);
+		
 		conf.setOutputKeyClass(Text.class);
-		conf.setOutputValueClass(BytesWritable.class);
+		conf.setOutputValueClass(BitMatRowWritable.class);
 
 		conf.setMapperClass(BitMatPruningMapper.class);
 		conf.setReducerClass(BitMatPruningReducer.class);
@@ -341,19 +346,19 @@ public class MapRedQueryTool extends Configured implements Tool {
 				path.append(Constants.PREDICATE_OS);
 				path.append(Constants.BITMAT);
 				path.append(idmap.get(predicate.toString()));
-				path.append(metaSuffix);
+//				path.append(metaSuffix);
 			}
 			else if(!obj) {
 				path.append(Constants.SUBJECT);
 				path.append(Constants.BITMAT);
 				path.append(idmap.get(predicate.toString()));
-				path.append(metaSuffix);
+//				path.append(metaSuffix);
 			}
 			else if(!pred) {
 				path.append(Constants.OBJECT);
 				path.append(Constants.BITMAT);
 				path.append(idmap.get(predicate.toString()));
-				path.append(metaSuffix);
+//				path.append(metaSuffix);
 			}
 			
 			String pstr = path.toString();

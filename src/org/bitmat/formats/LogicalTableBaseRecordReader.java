@@ -1,4 +1,4 @@
-package format;
+package org.bitmat.formats;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,23 +10,15 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.MultiFileSplit;
 import org.apache.hadoop.mapred.RecordReader;
 
-import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.sparql.util.graph.GraphFactory;
+abstract public class LogicalTableBaseRecordReader<K, V> implements RecordReader<K, V> {
 
-import utils.Constants;
-import utils.IStream;
-
-abstract public class BaseRecordReader<K, V> implements RecordReader<K, V> {
-	
-	protected Model model = ModelFactory.createModelForGraph(GraphFactory.createDefaultGraph());
 	
 	protected Configuration job = null;
 	protected MultiFileSplit split = null;
 	protected long currentPosition = 0;
 	protected FSDataInputStream currentFileStream = null;
 
-	protected IStream in = null;
+	protected BufferedReader in = null;
 	protected int currentFile = 0;
 	protected String fileName = null;
 	
@@ -46,14 +38,10 @@ abstract public class BaseRecordReader<K, V> implements RecordReader<K, V> {
 					}
 					in = null;
 					path = split.getPath(currentFile);
-					currentFileStream = path.getFileSystem(job).open(path);
-					//GzipCodec codec = new GzipCodec();
-					//codec.setConf(job);
-					//CompressionInputStream cin = codec.createInputStream(currentFileStream); 
-					//in = new IStream(new BufferedReader(new InputStreamReader(cin)));
-					in = new IStream(new BufferedReader(new InputStreamReader(currentFileStream)));
+					currentFileStream = path.getFileSystem(job).open(path);					
+					in = new BufferedReader(new InputStreamReader(currentFileStream,"UTF-8"));
 					fileName = path.getName();
-					//System.out.println("filename:"+fileName);
+					System.out.println("filename:"+fileName);
 				} catch (Exception e) {
 					if (path != null)
 						System.out.println("Failed opening file: " + path);
@@ -70,19 +58,9 @@ abstract public class BaseRecordReader<K, V> implements RecordReader<K, V> {
 		return false;
 	}	
 	
-	public BaseRecordReader(Configuration job, MultiFileSplit input) throws IOException {
+	public LogicalTableBaseRecordReader(Configuration job, MultiFileSplit input) throws IOException {
 		split = input;
 		this.job = job;		
-		//model = job.get(Constants.MODEL);
-		/*Path path = split.getPath(currentFile);
-		currentFileStream = path.getFileSystem(job).open(path);
-		in = new IStream(new BufferedReader(new InputStreamReader(currentFileStream)));
-		fileName = path.getName();*/
-		
-		
-		String args = job.get(Constants.ARGS);
-		System.out.println("ARGS:"+args);
-		
 		openNextFile();
 	}
 
@@ -108,3 +86,4 @@ abstract public class BaseRecordReader<K, V> implements RecordReader<K, V> {
 		return fileName;
 	}
 }
+

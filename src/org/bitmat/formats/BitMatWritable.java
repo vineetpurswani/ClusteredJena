@@ -1,4 +1,4 @@
-package format;
+package org.bitmat.formats;
 
 import java.io.DataInput;
 import java.io.DataOutput;

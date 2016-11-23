@@ -1,4 +1,4 @@
-package model;
+package org.bitmat.utils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,7 +12,6 @@ import org.apache.hadoop.fs.Path;
 
 import com.hp.hpl.jena.graph.Triple;
 
-import utils.Constants;
 
 public class JoinGroup{
 

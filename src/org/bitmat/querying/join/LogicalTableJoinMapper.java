@@ -1,4 +1,4 @@
-package mapper;
+package org.bitmat.querying.join;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -11,8 +11,8 @@ import org.apache.hadoop.mapred.MapReduceBase;
 import org.apache.hadoop.mapred.Mapper;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
+import org.bitmat.utils.Constants;
 
-import utils.Constants;
 
 import com.hp.hpl.jena.query.Query;
 import com.hp.hpl.jena.sparql.algebra.Op;
@@ -45,7 +45,7 @@ implements Mapper<Text, HashMap<String, String>, Text, Text> {
 
 		Text outputValue = new Text();
 		outputValue.set(generateOutputValue(key,value));		
-		System.out.println(outputKey + " " + outputValue);
+//		System.out.println(outputKey + " " + outputValue);
 		output.collect(outputKey, outputValue);
 	}
 	

@@ -1,4 +1,4 @@
-package format; 
+package org.bitmat.formats; 
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -12,6 +12,7 @@ import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.RecordReader;
 import org.bitmat.extras.BitMatRowWritable;
+
 
 public class WholeFileRecordReader implements RecordReader<Text, BitMatWritable> {
 	private FileSplit fileSplit;

@@ -1,4 +1,4 @@
-package format;
+package org.bitmat.formats;
 
 import java.io.IOException;
 import java.io.OutputStreamWriter;

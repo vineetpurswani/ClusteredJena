@@ -1,19 +1,21 @@
-package org.bitmat.pruning;
+package org.bitmat.querying.pruning;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.MapReduceBase;
 import org.apache.hadoop.mapred.Mapper;
 import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
+import org.bitmat.extras.BitMatRowWritable;
 import org.bitmat.extras.StringSerialization;
+import org.bitmat.utils.Constants;
 
-import utils.Constants;
 
 import com.hp.hpl.jena.graph.Triple;
 import com.hp.hpl.jena.query.Query;
@@ -24,7 +26,7 @@ import com.hp.hpl.jena.sparql.algebra.op.OpBGP;
 import com.hp.hpl.jena.sparql.algebra.op.OpProject;
 import com.hp.hpl.jena.sparql.core.BasicPattern;
 
-public class BitMatPruningMapper extends MapReduceBase implements Mapper<Text, BytesWritable, Text, BytesWritable>{
+public class BitMatPruningMapper extends MapReduceBase implements Mapper<LongWritable, BitMatRowWritable, Text, BitMatRowWritable>{
 	private String queryString = null;
 	private Query query = null;
 	private Op queryOp = null;
@@ -80,8 +82,8 @@ public class BitMatPruningMapper extends MapReduceBase implements Mapper<Text, B
 	}
 
 	@Override
-	public void map(Text key, BytesWritable value, 
-			OutputCollector<Text, BytesWritable> output, Reporter r) throws IOException {
+	public void map(LongWritable key, BitMatRowWritable value, 
+			OutputCollector<Text, BitMatRowWritable> output, Reporter r) throws IOException {
 
 //		System.out.println(key.toString());
 //		System.out.println(patternList);
@@ -89,25 +91,35 @@ public class BitMatPruningMapper extends MapReduceBase implements Mapper<Text, B
 
 		for (Integer i : patternList) {
 			Triple ttriple = pattern.get(i-1);
-			System.out.println(ttriple);
+//			System.out.println(ttriple);
 			// Both subject and object are variables
 			if (bitmat_type == Constants.BitMatType.SO) {
-				if (key.toString().equalsIgnoreCase("Row Vector")) output.collect(new Text(ttriple.getSubject().toString()), value);
-				else if (key.toString().equalsIgnoreCase("Column Vector")) output.collect(new Text(ttriple.getObject().toString()), value);
+				if (key.get() == -1L) output.collect(new Text(ttriple.getSubject().toString()), value);
+				else if (key.get() == -2L) output.collect(new Text(ttriple.getObject().toString()), value);
+				else
+					// single variable : not possible
+					throw new Error("Unreachable state.");
 			}
 			else if (bitmat_type == Constants.BitMatType.OS) {
-				if (key.toString().equalsIgnoreCase("Column Vector")) {
-					// System.out.println(ttriple.getSubject().toString() + value.toString());
+				System.out.println(value.rowId + " " + idmap.get(ttriple.getObject().toString()) + " " + ttriple.getObject());
+				if (value.rowId - idmap.get(ttriple.getObject().toString()) == 0L) {
+					// single variable : subject
 					output.collect(new Text(ttriple.getSubject().toString()), value);
 				}
 			}
 			else if (bitmat_type == Constants.BitMatType.PS) {
-				if (!ttriple.getSubject().isConcrete() && key.toString().equalsIgnoreCase("Column Vector")) output.collect(new Text(ttriple.getSubject().toString()), value);
-				else if (key.toString().equalsIgnoreCase("Row Vector")) output.collect(new Text(ttriple.getPredicate().toString()), value);
+				if (key.get() == -2L) output.collect(new Text(ttriple.getSubject().toString()), value);
+				else if (key.get() == -1L) output.collect(new Text(ttriple.getPredicate().toString()), value);
+//				else if (value.rowId - idmap.get(ttriple.getSubject().toString()) == 0L)
+//					// single variable : predicate
+//					output.collect(new Text(ttriple.getPredicate().toString()), value);
 			}
 			else if (bitmat_type == Constants.BitMatType.PO) {
-				if (key.toString().equalsIgnoreCase("Column Vector")) output.collect(new Text(ttriple.getObject().toString()), value);
-				else if (!ttriple.getPredicate().isConcrete() && key.toString().equalsIgnoreCase("Row Vector")) output.collect(new Text(ttriple.getPredicate().toString()), value);
+				if (key.get() == -2L) output.collect(new Text(ttriple.getObject().toString()), value);
+				else if (key.get() == -1L) output.collect(new Text(ttriple.getPredicate().toString()), value);
+				else if (value.rowId - idmap.get(ttriple.getPredicate().toString()) == 0L) 
+					// single variable : object
+					output.collect(new Text(ttriple.getObject().toString()), value);
 			}
 		}
 	}

@@ -1,6 +1,7 @@
-package mapper;
+package org.bitmat.querying.selection;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 
 import org.apache.hadoop.fs.FileSystem;
@@ -16,8 +17,9 @@ import org.apache.hadoop.mapred.OutputCollector;
 import org.apache.hadoop.mapred.Reporter;
 import org.bitmat.extras.BitMatRowWritable;
 import org.bitmat.extras.StringSerialization;
+import org.bitmat.formats.BitMatWritable;
+import org.bitmat.utils.Constants;
 
-import utils.Constants;
 
 import com.hp.hpl.jena.graph.Triple;
 import com.hp.hpl.jena.query.Query;
@@ -28,7 +30,6 @@ import com.hp.hpl.jena.sparql.algebra.op.OpBGP;
 import com.hp.hpl.jena.sparql.algebra.op.OpProject;
 import com.hp.hpl.jena.sparql.core.BasicPattern;
 
-import format.BitMatWritable;
 
 public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMatWritable, Text, Text>{
 
@@ -41,7 +42,8 @@ public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMa
 	private int patternNo = 0;
 	private HashMap<String, ArrayList<Integer>> tpmap = null;
 	private HashMap<String,Long> idmap = null;
-	private HashMap<String,ArrayList<Boolean>> tpBitmaskMap = new HashMap<String,ArrayList<Boolean>>();
+//	private HashMap<String,ArrayList<Boolean>> tpBitmaskMap = new HashMap<String,ArrayList<Boolean>>();
+	private HashMap<String,boolean[]> tpBitmaskMap = new HashMap<String, boolean[]>();
 	private JobConf conf = null;
 
 	private void readBitMasks(String key) {
@@ -54,15 +56,13 @@ public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMa
 			min.next(nkey, val);
 			min.close();
 
-			tpBitmaskMap.putIfAbsent(key, (ArrayList<Boolean>)StringSerialization.fromByteArray(((BytesWritable)val).getBytes()));
+			tpBitmaskMap.putIfAbsent(key, ((BitMatRowWritable)val).toBoolArray());
+			System.out.println((BitMatRowWritable)val);
 		}
 		catch (IOException e) {
 			e.printStackTrace();
 		}
 		catch (InstantiationException e) {
-			e.printStackTrace();
-		}
-		catch (ClassNotFoundException e) {
 			e.printStackTrace();
 		}
 		catch (IllegalAccessException e) {
@@ -90,38 +90,43 @@ public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMa
 		}
 
 		System.out.println(tpBitmaskMap);
-
 		return patternList;
 	}
 
 	private String get_value(Long row_id, Long col_id, Integer tindex, boolean isTwoVar) {
-		Triple to_match = pattern.get(tindex-1);
-		StringBuilder value = new StringBuilder();
-		if(bitmat_type == Constants.BitMatType.SO){
-			if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getSubject().toString()+"]").get(row_id.intValue())) return null;
-			if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getObject().toString()+"]").get(col_id.intValue())) return null;
-			value.append("[").append(to_match.getSubject().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
-			value.append("[").append(to_match.getObject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
+		try {
+			Triple to_match = pattern.get(tindex-1);
+			StringBuilder value = new StringBuilder();
+			if(bitmat_type == Constants.BitMatType.SO){
+				if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getSubject().toString()+"]")[row_id.intValue()]) return null;
+				if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getObject().toString()+"]")[col_id.intValue()]) return null;
+				value.append("[").append(to_match.getSubject().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
+				value.append("[").append(to_match.getObject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
+			}
+			else if(bitmat_type == Constants.BitMatType.OS){
+				if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getSubject().toString()+"]")[col_id.intValue()]) return null;
+				//			if (isTwoVar && !tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getObject().toString()+"]").get(row_id.intValue())) return null;
+				//			if (isTwoVar) value.append("[").append(to_match.getObject().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
+				value.append("[").append(to_match.getSubject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
+			}
+			else if(bitmat_type == Constants.BitMatType.PO){
+				if (isTwoVar && !tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getPredicate().toString()+"]")[row_id.intValue()]) return null;
+				if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getObject().toString()+"]")[col_id.intValue()]) return null;
+				if (isTwoVar) value.append("[").append(to_match.getPredicate().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
+				value.append("[").append(to_match.getObject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
+			}
+			else if(bitmat_type == Constants.BitMatType.PS){
+				if (isTwoVar && !tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getSubject().toString()+"]")[col_id.intValue()]) return null;
+				if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getPredicate().toString()+"]")[row_id.intValue()]) return null;
+				value.append("[").append(to_match.getPredicate().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
+				if (isTwoVar) value.append("[").append(to_match.getSubject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
+			}
+			return value.toString();
 		}
-		else if(bitmat_type == Constants.BitMatType.OS){
-			if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getSubject().toString()+"]").get(col_id.intValue())) return null;
-			//			if (isTwoVar && !tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getObject().toString()+"]").get(row_id.intValue())) return null;
-			//			if (isTwoVar) value.append("[").append(to_match.getObject().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
-			value.append("[").append(to_match.getSubject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
+		catch (ArrayIndexOutOfBoundsException e) {
+			e.printStackTrace();
+			return null;
 		}
-		else if(bitmat_type == Constants.BitMatType.PO){
-			if (isTwoVar && !tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getPredicate().toString()+"]").get(row_id.intValue())) return null;
-			if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getObject().toString()+"]").get(col_id.intValue())) return null;
-			if (isTwoVar) value.append("[").append(to_match.getPredicate().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
-			value.append("[").append(to_match.getObject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
-		}
-		else if(bitmat_type == Constants.BitMatType.PS){
-			if (isTwoVar && !tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getSubject().toString()+"]").get(col_id.intValue())) return null;
-			if (!tpBitmaskMap.get("tpbm_"+tindex+"["+to_match.getPredicate().toString()+"]").get(row_id.intValue())) return null;
-			value.append("[").append(to_match.getPredicate().getName()).append("]").append(""+row_id).append(Constants.DELIMIT);
-			if (isTwoVar) value.append("[").append(to_match.getSubject().getName()).append("]").append(""+col_id).append(Constants.DELIMIT);
-		}
-		return value.toString();
 	}
 
 	private void matchTriples(BitMatWritable bitmat, ArrayList<Integer> patternList, 
@@ -236,8 +241,8 @@ public class SelectionMapper extends MapReduceBase implements Mapper<Text, BitMa
 	public void map(Text key, BitMatWritable value,
 			OutputCollector<Text, Text> output, Reporter r) throws IOException {
 
-		System.out.println(value.rows.size());
-		System.out.println(patternNo);
+//		System.out.println(value.rows.size());
+//		System.out.println(patternNo);
 
 		ArrayList<Integer> patternList = get_pattern();
 		matchTriples(value, patternList, output);

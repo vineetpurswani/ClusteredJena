@@ -1,4 +1,4 @@
-package reducers;
+package org.bitmat.querying.selection;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -30,7 +30,7 @@ public class SelectionReducer extends MapReduceBase implements
 		while(values.hasNext()){
 			Text value = values.next();
 			
-			System.out.println("key: "+newKey+", value:"+value);
+//			System.out.println("key: "+newKey+", value:"+value);
 			output.collect(newKey, value);
 		}		
 	}

@@ -1,6 +1,5 @@
-package format;
+package org.bitmat.formats;
 
-import format.LogicalTableTripleReader;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -12,6 +11,7 @@ import org.apache.hadoop.mapred.MultiFileInputFormat;
 import org.apache.hadoop.mapred.MultiFileSplit;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
+import org.bitmat.formats.LogicalTableTripleReader;
 
 
 
